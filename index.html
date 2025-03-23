@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>实时录音转文字 + 下载</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #cccccc;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      min-height: 100px;
+    }
+    #downloadLink {
+      display: block;
+      margin-top: 10px;
+      color: #007bff;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>实时录音转文字 + 下载</h1>
+  
+  <button id="startBtn">开始录音</button>
+  <button id="stopBtn" disabled>停止录音</button>
+  
+  <div id="result">
+    <p>实时识别结果：<span id="transcript"></span></p>
+    <a id="downloadLink" style="display: none;">点击下载录音文件</a>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const transcriptEl = document.getElementById('transcript');
+    const downloadLink = document.getElementById('downloadLink');
+
+    let mediaRecorder;
+    let audioChunks = [];
+    let recognition;
+
+    // 初始化录音和语音识别
+    async function init() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // 初始化录音
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          downloadLink.href = audioUrl;
+          downloadLink.download = `recording-${Date.now()}.wav`;
+          downloadLink.style.display = 'block';
+          audioChunks = [];
+        };
+
+        // 初始化语音识别（仅限Chrome）
+        if ('webkitSpeechRecognition' in window) {
+          recognition = new webkitSpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'zh-CN';
+
+          recognition.onresult = (event) => {
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const transcript = event.results[i][0].transcript;
+              if (event.results[i].isFinal) {
+                transcriptEl.textContent += transcript + ' ';
+              } else {
+                interimTranscript += transcript;
+              }
+            }
+            // 实时显示中间结果
+            transcriptEl.textContent += interimTranscript;
+          };
+        } else {
+          alert('当前浏览器不支持实时语音识别，请使用最新版Chrome！');
+        }
+
+      } catch (error) {
+        alert('无法访问麦克风，请检查权限！');
+      }
+    }
+
+    // 页面加载时初始化
+    document.addEventListener('DOMContentLoaded', init);
+
+    // 按钮事件
+    startBtn.addEventListener('click', () => {
+      mediaRecorder.start();
+      recognition.start();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      transcriptEl.textContent = ''; // 清空之前的结果
+      downloadLink.style.display = 'none'; // 隐藏下载链接
+    });
+
+    stopBtn.addEventListener('click', () => {
+      mediaRecorder.stop();
+      recognition.stop();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>
