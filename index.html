@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>实时录音转文字 + 下载（修复版）</title>
+  <title>实时录音转文字 + 下载</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -38,7 +38,7 @@
   </style>
 </head>
 <body>
-  <h1>实时录音转文字 + 下载（修复版）</h1>
+  <h1>实时录音转文字 + 下载</h1>
   
   <button id="startBtn">开始录音</button>
   <button id="stopBtn" disabled>停止录音</button>
@@ -57,8 +57,8 @@
     let mediaRecorder;
     let audioChunks = [];
     let recognition;
-    let finalTranscript = ''; // 新增：用于累积最终识别结果
 
+    // 初始化录音和语音识别
     async function init() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -78,7 +78,7 @@
           audioChunks = [];
         };
 
-        // 语音识别初始化（仅限Chrome）
+        // 初始化语音识别（仅限Chrome）
         if ('webkitSpeechRecognition' in window) {
           recognition = new webkitSpeechRecognition();
           recognition.continuous = true;
@@ -90,15 +90,14 @@
             for (let i = event.resultIndex; i < event.results.length; i++) {
               const transcript = event.results[i][0].transcript;
               if (event.results[i].isFinal) {
-                finalTranscript += transcript + ' '; // 最终结果累积
+                transcriptEl.textContent += transcript + ' ';
               } else {
-                interimTranscript += transcript;      // 中间结果临时存储
+                interimTranscript += transcript;
               }
             }
-            // 合并显示：最终结果 + 当前中间结果
-            transcriptEl.textContent = finalTranscript + interimTranscript;
+            // 实时显示中间结果
+            transcriptEl.textContent += interimTranscript;
           };
-
         } else {
           alert('当前浏览器不支持实时语音识别，请使用最新版Chrome！');
         }
@@ -108,6 +107,7 @@
       }
     }
 
+    // 页面加载时初始化
     document.addEventListener('DOMContentLoaded', init);
 
     // 按钮事件
@@ -116,9 +116,8 @@
       recognition.start();
       startBtn.disabled = true;
       stopBtn.disabled = false;
-      finalTranscript = '';          // 清空历史最终结果
-      transcriptEl.textContent = ''; // 清空显示区域
-      downloadLink.style.display = 'none';
+      transcriptEl.textContent = ''; // 清空之前的结果
+      downloadLink.style.display = 'none'; // 隐藏下载链接
     });
 
     stopBtn.addEventListener('click', () => {
